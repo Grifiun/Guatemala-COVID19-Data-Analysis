@@ -61,7 +61,7 @@ def cargar_archivo_global():
     df_global = pd.read_csv(data_global)
 
     # Guardar el DataFrame en un archivo CSV
-    df_global.to_csv('archivo_global.csv', index=False)
+    # df_global.to_csv('file/archivo_global.csv', index=False)
 
     return df_global
 

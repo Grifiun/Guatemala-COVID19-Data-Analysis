@@ -1,5 +1,5 @@
 import pandas as pd
-from ..files.load_data import cargar_archivo_local
+from ..datasets.load_data import cargar_archivo_local
 
 class FilterDataLocal:
     def __init__(self):
@@ -7,6 +7,9 @@ class FilterDataLocal:
 
     def is_alpha(self, value):
         return value.isalpha()
+
+    def is_positive_integer(self, value):
+        return pd.notna(value) and isinstance(value, int) and value > 0
 
     def is_numeric(self, value):
         if isinstance(value, (int, float)):
@@ -23,7 +26,7 @@ class FilterDataLocal:
         except:
             return False
 
-    def prepare_data(self):
+    def prepare_data(self, year):
         print("Applying filters to the columns...")
         # Remove duplicates
         self.df_local = self.df_local.drop_duplicates()
@@ -31,22 +34,20 @@ class FilterDataLocal:
         # Check and correct data
         self.df_local = self.df_local[self.df_local['departamento'].apply(lambda x: self.is_alpha(x))]
         self.df_local = self.df_local[self.df_local['municipio'].apply(lambda x: self.is_alpha(x))]
-        self.df_local = self.df_local[self.df_local['codigo_departamento'].apply(lambda x: self.is_numeric(x))]
-        self.df_local = self.df_local[self.df_local['codigo_municipio'].apply(lambda x: self.is_numeric(x))]
-        self.df_local = self.df_local[self.df_local['poblacion'].apply(lambda x: self.is_numeric(x) if pd.notna(x) else False)]
+        self.df_local = self.df_local[self.df_local['codigo_departamento'].apply(lambda x: self.is_numeric(x))] # is_alpha_numeric
+        self.df_local = self.df_local[self.df_local['codigo_municipio'].apply(lambda x: self.is_numeric(x))] # is_alpha_numeric
+        self.df_local = self.df_local[self.df_local['poblacion'].apply(lambda x: self.is_positive_integer(x) if pd.notna(x) else False)]
 
         # Remove invalid columns after the first 5 columns
         valid_date_columns = [col for col in self.df_local.columns[5:] if self.is_valid_date(col)]
-        invalid_columns = [col for col in self.df_local.columns[5:] if col not in valid_date_columns]
 
-        print("Invalid date columns: ", invalid_columns)
-        # Remove columns with invalid names
-        self.df_local = self.df_local.drop(columns=invalid_columns, errors='ignore')
+        # Filter by the specified year
+        self.df_local = self.df_local.drop(columns=[col for col in valid_date_columns if pd.to_datetime(col, format='%m/%d/%Y').year != year])
 
-        # Replace NaN values with 0 in all date columns
+        # Replace NaN values with 0 in all remaining date columns
         for col in valid_date_columns:
             try:
-                self.df_local[col] = self.df_local[col].apply(lambda x: 0 if pd.isna(x) or not self.is_numeric(x) else int(x))
+                self.df_local[col] = self.df_local[col].apply(lambda x: 0 if pd.isna(x) or not self.is_positive_integer(x) else int(x))
             except Exception as e:
                 print(f"Error processing column {col}: {e}")
 
@@ -68,6 +69,37 @@ class FilterDataLocal:
 
         print("Data insertion preparation for Municipality and Department completed.")
         return prepared_data_dept_mun
+    
+    def prepare_data_for_insertion_department(self):
+        # Select relevant columns
+        relevant_columns_local = ['codigo_departamento', 'departamento']
+        prepared_data_department = self.df_local[relevant_columns_local].copy()
+
+        # Remove duplicates
+        prepared_data_department = prepared_data_department.drop_duplicates()
+
+        # Rename columns
+        prepared_data_department.columns = ['code_department', 'name_department']
+
+        # Assign 'GT' to the 'code_country' column
+        prepared_data_department['code_country'] = 'GT'
+
+        print("Data insertion preparation for Department completed.")
+        return prepared_data_department
+
+    def prepare_data_for_insertion_municipality(self):
+        # Select relevant columns
+        relevant_columns_local = ['codigo_municipio', 'municipio', 'codigo_departamento', 'poblacion']
+        prepared_data_municipality = self.df_local[relevant_columns_local].copy()
+
+        # Remove duplicates
+        prepared_data_municipality = prepared_data_municipality.drop_duplicates()
+
+        # Rename columns
+        prepared_data_municipality.columns = ['code_municipality', 'municipality', 'code_department', 'population']
+
+        print("Data insertion preparation for Municipality completed.")
+        return prepared_data_municipality
     
     def prepare_data_for_insertion_municipality_deaths_reported(self):
         # Select relevant columns for deaths reported
