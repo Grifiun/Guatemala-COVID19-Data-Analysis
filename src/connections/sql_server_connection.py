@@ -1,4 +1,4 @@
-import pyodbc
+import pypyodbc as odbc
 from dotenv import load_dotenv
 import os
 
@@ -14,10 +14,11 @@ class SQLServerConnection:
 
     def get_connection(self):
         connection_string = (
-            f"DRIVER={{ODBC Driver 19 for SQL Server}};"
+            f"DRIVER={{ODBC Driver 17 for SQL Server}};"
             f"SERVER={self.server},{self.port};"
             f"DATABASE={self.database};"
             f"UID={self.username};"
             f"PWD={self.password};"
+            f"Trust_Connection=YES;"
         )
-        return pyodbc.connect(connection_string)
+        return odbc.connect(connection_string)

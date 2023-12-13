@@ -1,7 +1,7 @@
 numpy
 pandas
 mysql-connector-python
-pyodbc
+pypyodbc
 requests
 chardet
 python-dotenv

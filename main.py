@@ -3,6 +3,7 @@ import argparse
 from src.filters.filter_global import FilterDataGlobal
 from src.filters.filter_local import FilterDataLocal
 from src.connections.sql_server_connection import SQLServerConnection
+from src.connections.mysql_server_connection import MySQLConnection
 from services.sql_query_executor import SQLQueryExecutor, generate_queries_for_cases, generate_queries_for_reported_deaths, generate_queries_for_country, generate_queries_for_department, generate_queries_for_municipality
 
 def insert_data_to_sql_server(connection, batch_size, df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths):
@@ -32,6 +33,7 @@ if __name__ == "__main__":
     parser.add_argument('country', type=str, nargs='?', default='Guatemala', help='Country for data filtering')
     parser.add_argument('year', type=int, nargs='?', default=2020, help='Year for data filtering')
     parser.add_argument('batch_size', type=int, nargs='?', default=50, help='Number of records per batch for batched SQL inserts')
+    parser.add_argument('db', type=str, nargs='?', default='SQL_Server', help='Database MySQL or SQL_Server')
     args = parser.parse_args()
 
     # Create instances of objects
@@ -59,8 +61,15 @@ if __name__ == "__main__":
     df_prepared_reported_deaths.to_csv('files/prepared_reported_deaths.csv', index=False)
 
     # Create connection to SQL Server
-    sql_server_connection = SQLServerConnection()
-    connection = sql_server_connection.get_connection()
+    db_type = args.db
+    connection = None
+
+    if db_type == 'MySQL':
+        mysql_connection = MySQLConnection()
+        connection = mysql_connection.get_connection()
+    else:   
+        sql_server_connection = SQLServerConnection()
+        connection = sql_server_connection.get_connection()
 
     # Insert data to SQL Server
-    # insert_data_to_sql_server(connection, args.batch_size, df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths)
+    insert_data_to_sql_server(connection, args.batch_size, df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths)
