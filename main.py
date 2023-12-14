@@ -4,29 +4,49 @@ from src.filters.filter_global import FilterDataGlobal
 from src.filters.filter_local import FilterDataLocal
 from src.connections.sql_server_connection import SQLServerConnection
 from src.connections.mysql_server_connection import MySQLConnection
-from services.sql_query_executor import SQLQueryExecutor, generate_queries_for_cases, generate_queries_for_reported_deaths, generate_queries_for_country, generate_queries_for_department, generate_queries_for_municipality
+from services.sql_query_executor import SQLQueryExecutor, generate_queries_for_table
 
-def insert_data_to_sql_server(connection, batch_size, df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths):
+def insert_data_to_sql_server(connection, batch_size, df_list):
     # Create SQLQueryExecutor instance
     sql_executor = SQLQueryExecutor(connection)
 
-    # Generate queries
-    queries_country = generate_queries_for_country(df_prepared_country)
-    queries_department = generate_queries_for_department(df_prepared_department)
-    queries_municipality = generate_queries_for_municipality(df_prepared_municipality)
-    queries_cases = generate_queries_for_cases(df_prepared_cases)
-    queries_reported_deaths = generate_queries_for_reported_deaths(df_prepared_reported_deaths)
+    # Define the order of tables
+    table_order = ["Country", "Department", "Municipality", "Cases", "MunicipalityDeathsReported"]
 
-    # Execute queries in batches
-    sql_executor.execute_batch_insert(sql_executor, queries_country, batch_size)
-    sql_executor.execute_batch_insert(sql_executor, queries_department, batch_size)
-    sql_executor.execute_batch_insert(sql_executor, queries_municipality, batch_size)
-    sql_executor.execute_batch_insert(sql_executor, queries_cases, batch_size)
-    sql_executor.execute_batch_insert(sql_executor, queries_reported_deaths, batch_size)
+    # Initialize reports
+    success_reports = []
+    failure_reports = []
 
-    # Close connection
-    connection.close()
+    try:
+        for i, df in enumerate(df_list):
+            # Generate queries
+            queries = generate_queries_for_table(df, table_order[i])
 
+            # Execute queries in batches
+            print(f"Se inicia la ejecución de la inserción de {table_order[i]}")
+            success_report, failure_report = sql_executor.execute_batch_insert(table_order[i], queries, batch_size)
+            print(f"Se terminó la ejecución de la inserción de {table_order[i]}")
+
+            # Append reports
+            success_reports.extend(success_report)
+            failure_reports.extend(failure_report)
+
+    except KeyboardInterrupt:
+        print("\nProceso interrumpido por el usuario. Mostrando informes actuales:")
+
+    finally:
+        # Close connection
+        connection.close()
+
+        # Print reports
+        print("------------------ DATOS INSERTADOS CORRECTAMENTE -------------------")
+        for report in success_reports:
+            print(report)
+
+        print("------------------ DATOS NO INSERTADOS ------------------------------")
+        for report in failure_reports:
+            print(report)
+            
 if __name__ == "__main__":
     # Parse command line arguments
     parser = argparse.ArgumentParser(description='Process country and year for data filtering.')
@@ -62,14 +82,18 @@ if __name__ == "__main__":
 
     # Create connection to SQL Server
     db_type = args.db
-    connection = None
+    #connection = None
+    sql_server_connection = SQLServerConnection()
+    connection = sql_server_connection.get_connection()
+    # 
+    # if db_type == 'MySQL':
+    #    mysql_connection = MySQLConnection()
+    #    connection = mysql_connection.get_connection()
+    #else:   
+    #    sql_server_connection = SQLServerConnection()
+    #    connection = sql_server_connection.get_connection()
 
-    if db_type == 'MySQL':
-        mysql_connection = MySQLConnection()
-        connection = mysql_connection.get_connection()
-    else:   
-        sql_server_connection = SQLServerConnection()
-        connection = sql_server_connection.get_connection()
+    print("conn: ", connection)
 
     # Insert data to SQL Server
-    insert_data_to_sql_server(connection, args.batch_size, df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths)
+    insert_data_to_sql_server(connection, args.batch_size, [df_prepared_country, df_prepared_department, df_prepared_municipality, df_prepared_cases, df_prepared_reported_deaths])
