@@ -42,7 +42,7 @@ class FilterDataLocal:
         valid_date_columns = [col for col in self.df_local.columns[5:] if self.is_valid_date(col)]
 
         # Filter by the specified year
-        self.df_local = self.df_local.drop(columns=[col for col in valid_date_columns if pd.to_datetime(col, format='%m/%d/%Y').year != year])
+        # self.df_local = self.df_local.drop(columns=[col for col in valid_date_columns if pd.to_datetime(col, errors='coerce').dt.year.notna().any() and pd.to_datetime(col, errors='coerce').dt.year != year])
 
         # Replace NaN values with 0 in all remaining date columns
         for col in valid_date_columns:

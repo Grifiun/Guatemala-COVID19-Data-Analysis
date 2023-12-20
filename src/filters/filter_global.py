@@ -54,7 +54,7 @@ class FilterDataGlobal:
         df_prepared_country = df_prepared_country.drop_duplicates()
 
         # Rename columns to match database schema
-        df_prepared_country.columns = ['code_country', 'name_country']
+        df_prepared_country.columns = ['name_country', 'code_country']
 
         print("Data insertion preparation for Country completed.")
         return df_prepared_country
